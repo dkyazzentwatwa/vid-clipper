@@ -1,0 +1,96 @@
+# ============================================
+# AI Video Clipper - Git Ignore Rules
+# ============================================
+
+# Downloaded videos and generated clips
+downloads/
+*.mp4
+*.m4a
+*.webm
+*.mkv
+*.avi
+*.mov
+
+# Transcription and analysis files
+*.json
+!package.json
+!requirements.txt
+*.srt
+*.vtt
+*.txt
+!requirements.txt
+
+# Markdown outputs (generated files)
+downloads/**/SUMMARY.md
+downloads/**/analysis_request.md
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv/
+virtualenv/
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
+.eggs/
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# Logs
+logs/
+*.log
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.settings/
+*.sublime-project
+*.sublime-workspace
+
+# Claude Code local config (optional - uncomment if you want to ignore)
+# .claude/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.bak
+
+# FFmpeg temp files
+ffmpeg2pass-*.log
+
+# Keep structure with .gitkeep files
+!downloads/.gitkeep
+!logs/.gitkeep
+!prompt_templates/
+
+# Skill package (if you want to version it separately)
+# skill-package/
+# *.skill

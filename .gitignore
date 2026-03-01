@@ -14,6 +14,7 @@ downloads/
 # Transcription and analysis files
 *.json
 !package.json
+!tsconfig.json
 !requirements.txt
 *.srt
 *.vtt
@@ -94,3 +95,8 @@ ffmpeg2pass-*.log
 # Skill package (if you want to version it separately)
 # skill-package/
 # *.skill
+
+# Node.js / Remotion
+node_modules/
+package-lock.json
+.remotion/

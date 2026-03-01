@@ -31,6 +31,7 @@ Verify dependencies are installed:
 yt-dlp --version        # YouTube downloader (only needed for YouTube URLs)
 whisper --help          # Audio transcription
 ffmpeg -version         # Video processing
+node --version          # Node.js 18+ (required for captions)
 ```
 
 If missing, install them:
@@ -44,6 +45,13 @@ brew install ffmpeg
 
 # Install ffmpeg (Linux)
 sudo apt install ffmpeg
+
+# Install Node.js (required for captions)
+brew install node       # macOS
+# Or use nvm: nvm install 18
+
+# Install Remotion dependencies (for captions)
+cd remotion-captions && npm install
 ```
 
 ## Workflow
@@ -114,6 +122,8 @@ After you provide the JSON file, the script automatically:
 **Output:**
 - `clips/clip_001_*.mp4` - Standard clips (landscape)
 - `clips/clip_001_*_instagram.mp4` - Instagram versions (9:16 vertical)
+- `clips/clip_001_*_captioned.mp4` - With animated captions (if `--add-captions`)
+- `clips/clip_001_*_instagram_captioned.mp4` - Instagram with captions (if `--add-captions`)
 - `SUMMARY.md` - Report with captions, hashtags, virality scores
 
 ## Clip Selection Criteria
@@ -177,6 +187,35 @@ python3 scripts/ai_clip_generator.py <source> --skip-transcription
 python3 scripts/ai_clip_generator.py <source> --skip-download --skip-transcription
 ```
 
+### Animated Captions (Phase 2)
+
+Generate CapCut-style animated captions using Remotion:
+
+```bash
+# Add captions with default style (background)
+python3 scripts/ai_clip_generator.py <source> --add-captions
+
+# Choose specific caption style
+python3 scripts/ai_clip_generator.py <source> --add-captions --caption-style scaling
+
+# Custom accent color (default: yellow #FFFF00)
+python3 scripts/ai_clip_generator.py <source> --add-captions --caption-color "#FF6600"
+```
+
+**Available Caption Styles:**
+
+| Style | Description | Best For |
+|-------|-------------|----------|
+| `background` | Animated highlight box behind words (default) | CapCut-style, modern IG look |
+| `scaling` | Words scale up with spring animation | Energetic, punchy content |
+| `colored` | Active word highlighted in accent color | Clean, professional look |
+
+**Prerequisites for Captions:**
+- Node.js 18+ required
+- First run: `cd remotion-captions && npm install`
+
+Captioned clips will be saved with `_captioned` suffix alongside standard clips.
+
 ### Working Directory Structure
 
 ```
@@ -233,6 +272,8 @@ In `scripts/ai_clip_generator.py`:
 - `generate_analysis_prompt(transcript, metadata, output_dir)` - Create Claude prompt
 - `validate_clip_recommendations(json_path, duration)` - Validate AI output
 - `generate_clips(video_path, recommendations, output_dir)` - FFmpeg clip generation
+- `generate_captions_for_clip(...)` - Remotion caption generation
+- `convert_whisper_to_captions(...)` - Whisper JSON to Remotion format
 - `generate_summary_report(...)` - Create final report
 
 ## Design Decisions
@@ -242,11 +283,13 @@ In `scripts/ai_clip_generator.py`:
 3. **Dual input support** - Handles both YouTube and local uploads
 4. **Whisper base model** - Balance of speed and accuracy
 5. **Dual clip formats** - Standard landscape + Instagram 9:16 vertical
+6. **Remotion for captions** - React-based rendering for animated word-by-word captions
+7. **Caption positioning** - Captions positioned within video content (not black bars) for 9:16 letterboxed videos
 
 ## Next Steps After Clip Generation
 
 1. **Review clips** - Check quality and content
-2. **Add captions** - Use video editing software
+2. **Add captions** - Use `--add-captions` flag or video editing software
 3. **Add music** - Use trending audio in Instagram/TikTok editor
 4. **Post with optimized captions** - Use suggestions from SUMMARY.md
 5. **Track performance** - Monitor which clips perform best

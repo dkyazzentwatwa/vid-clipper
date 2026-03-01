@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **AI Video Clipper** is a Python-based tool that automatically identifies and creates viral-worthy clips from YouTube videos using AI-powered analysis. It's a two-phase project:
 - **Phase 1 (Complete):** AI-powered clip identification and generation
-- **Phase 2 (Planned):** Automated caption generation with Remotion
+- **Phase 2 (Complete):** Animated caption generation with Remotion
 
 ## Core Architecture
 
@@ -45,6 +45,15 @@ python3 ai_clip_generator.py "URL" --skip-transcription
 
 # Skip both (for testing clip generation only)
 python3 ai_clip_generator.py "URL" --skip-download --skip-transcription
+
+# With animated captions (Phase 2)
+python3 ai_clip_generator.py "URL" --add-captions
+
+# Choose caption style: background (default), scaling, colored
+python3 ai_clip_generator.py "URL" --add-captions --caption-style scaling
+
+# Custom accent color for captions
+python3 ai_clip_generator.py "URL" --add-captions --caption-color "#FF5500"
 ```
 
 ### Dependency Verification
@@ -78,7 +87,7 @@ python3 ai_clip_generator.py "https://www.youtube.com/watch?v=QE_Nt5dMLHI"
 
 ```
 vid-clipper/
-├── ai_clip_generator.py          # Main orchestrator script (~600 lines)
+├── ai_clip_generator.py          # Main orchestrator script (~700 lines)
 ├── requirements.txt               # Python dependencies
 ├── CLAUDE.md                      # This file - project documentation
 ├── README.md                      # User-facing documentation
@@ -87,6 +96,26 @@ vid-clipper/
 │
 ├── prompt_templates/              # AI analysis templates
 │   └── clip_analysis_prompt.md   # Claude clip analysis template
+│
+├── remotion-captions/             # Phase 2: Animated caption system
+│   ├── package.json              # Node.js dependencies
+│   ├── tsconfig.json             # TypeScript config
+│   ├── remotion.config.ts        # Remotion config
+│   └── src/
+│       ├── index.ts              # Remotion entry point
+│       ├── Root.tsx              # Composition registration
+│       ├── CaptionedClip.tsx     # Main video+caption composition
+│       ├── convert-whisper.ts    # Whisper JSON → Remotion captions
+│       ├── render-clip.ts        # CLI render script
+│       └── CaptionStyles/        # Caption animation styles
+│           ├── types.ts          # Shared types & utilities
+│           ├── ColoredWords.tsx  # Highlight active word
+│           ├── ScalingWords.tsx  # Pop/bounce effect
+│           ├── AnimatedBackground.tsx  # CapCut-style box
+│           └── index.ts          # Style exports
+│
+├── scripts/
+│   └── install-remotion.sh       # Remotion setup script
 │
 ├── downloads/                     # Per-video working directories (gitignored)
 │   ├── .gitkeep                  # Keeps folder in git
@@ -98,8 +127,10 @@ vid-clipper/
 │       ├── clip_recommendations.json # Claude's JSON output
 │       ├── SUMMARY.md            # Final report with recommendations
 │       └── clips/                # Generated clips
-│           ├── clip_001_*.mp4    # Standard format
-│           └── clip_001_*_instagram.mp4  # 9:16 vertical
+│           ├── clip_001_*.mp4           # Standard format
+│           ├── clip_001_*_instagram.mp4 # 9:16 vertical
+│           ├── clip_001_*_captioned.mp4 # With animated captions
+│           └── clip_001_*_instagram_captioned.mp4  # 9:16 with captions
 │
 ├── logs/                          # Reserved for future logging (gitignored)
 │   └── .gitkeep
@@ -221,7 +252,7 @@ filename = f"clip_{clip_num:03d}_{safe_title[:30]}"  # Limit length
 
 ## Integration Points
 
-### Adding Claude API Support (Phase 2)
+### Adding Claude API Support (Future)
 
 To replace interactive mode with API calls, modify `invoke_claude_analysis()`:
 1. Read prompt from `analysis_request.md`
@@ -230,13 +261,85 @@ To replace interactive mode with API calls, modify `invoke_claude_analysis()`:
 4. Save to `clip_recommendations.json`
 5. Remove user input prompt
 
-### Adding Caption Generation (Phase 2)
+### Caption Generation (Phase 2 - Implemented)
 
-Future Remotion integration should:
-1. Parse word-level timestamps from Whisper JSON
-2. Generate React components for caption overlays
-3. Render captions burned into video
-4. Reference: `downloads/VIDEO_ID/original.json` has word timings
+The Remotion caption system works as follows:
+
+1. **Whisper JSON Conversion** (`convert-whisper.ts`):
+   - Extracts word-level timestamps from Whisper JSON
+   - Converts to Remotion Caption format with startMs/endMs
+   - Clips captions to the specific video segment
+
+2. **Caption Styles** (`CaptionStyles/`):
+   - `background`: Animated box jumps word-to-word (CapCut style)
+   - `scaling`: Words pop/bounce with spring animation
+   - `colored`: Active word highlighted in accent color
+
+3. **Render Pipeline**:
+   - `generate_captions_for_clip()` in Python calls Remotion render
+   - Outputs `*_captioned.mp4` alongside standard clips
+   - Creates 9:16 Instagram versions with captions
+
+**To modify caption styles:**
+- Edit components in `remotion-captions/src/CaptionStyles/`
+- Preview with `npx remotion studio` in `remotion-captions/`
+- Add new styles by creating new components and registering in `CaptionedClip.tsx`
+
+## Phase 2: Remotion Captions
+
+### Setup
+
+```bash
+# Install Remotion dependencies (requires Node.js 18+)
+./scripts/install-remotion.sh
+
+# Or manually
+cd remotion-captions && npm install
+```
+
+### Caption Style Architecture
+
+Each style is a React component that receives:
+```typescript
+interface CaptionStyleProps {
+  captions: RemotionCaption[];  // Word-level captions
+  currentFrame: number;         // Current video frame
+  fps: number;                  // Frames per second
+  accentColor: string;          // Highlight color
+  fontFamily: string;           // Font family
+}
+```
+
+The `getActiveWords()` utility finds which words are visible at the current frame,
+allowing each style to animate based on timing.
+
+### Adding New Caption Styles
+
+1. Create component in `remotion-captions/src/CaptionStyles/NewStyle.tsx`
+2. Export from `remotion-captions/src/CaptionStyles/index.ts`
+3. Add to `CaptionStyle` type in `types.ts`
+4. Add case in `CaptionRenderer` switch in `CaptionedClip.tsx`
+5. Add choice to `--caption-style` in `ai_clip_generator.py`
+
+### Whisper JSON Format
+
+The converter expects Whisper's JSON format with word-level timestamps:
+```json
+{
+  "segments": [{
+    "start": 0.0,
+    "end": 2.5,
+    "text": "Hello world",
+    "words": [
+      {"word": "Hello", "start": 0.0, "end": 0.5},
+      {"word": "world", "start": 0.5, "end": 1.0}
+    ]
+  }]
+}
+```
+
+If word-level timestamps are unavailable, the converter estimates timing
+by distributing segment duration evenly across words.
 
 ## Claude Prompt Engineering
 

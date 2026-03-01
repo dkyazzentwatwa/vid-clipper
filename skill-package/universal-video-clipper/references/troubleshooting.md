@@ -132,3 +132,72 @@ python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
 ```
+
+## Caption Generation Issues (Remotion)
+
+### Captions Not Generating
+
+**Remotion Not Found**
+```bash
+cd remotion-captions && npm install
+```
+
+**Node.js Version Too Old**
+Remotion requires Node.js 18+:
+```bash
+node --version
+# If < 18, upgrade:
+brew install node  # macOS
+# Or use nvm: nvm install 18
+```
+
+**npx Command Not Found**
+```bash
+npm install -g npx
+```
+
+### Caption Render Timeout
+
+Long clips (>45s) may timeout. Solutions:
+- The script uses a 10-minute timeout
+- For very long clips, consider splitting into smaller segments
+- Ensure no other heavy processes are running
+
+### Caption Positioning Wrong
+
+For 9:16 letterboxed videos (16:9 content in 9:16 frame):
+- Captions are positioned at `bottom: 700px` to stay within video content
+- This accounts for black bars at top/bottom
+- If captions appear in black bars, the positioning needs adjustment for different aspect ratios
+
+### Video 404 Error in Remotion
+
+The script copies clips to `remotion-captions/public/` for serving:
+- Ensure the public folder exists and is writable
+- Temp files are cleaned up automatically after render
+- If render fails mid-process, manually clean: `rm -f remotion-captions/public/temp_clip_*`
+
+### Chrome Headless Shell Download
+
+First Remotion render downloads Chrome Headless Shell (~90MB):
+- Requires internet connection
+- Downloaded to system cache (one-time)
+- May take several minutes on first run
+
+### TypeScript Errors
+
+If you see TypeScript errors during render:
+```bash
+cd remotion-captions
+rm -rf node_modules
+npm install
+```
+
+### Caption Style Not Applying
+
+Ensure valid style name:
+- `background` (default) - Animated highlight box
+- `scaling` - Pop/scale animation
+- `colored` - Color highlight only
+
+Invalid style names fall back to `background`.

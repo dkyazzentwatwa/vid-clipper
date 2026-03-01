@@ -12,10 +12,10 @@ The AI Video Clipper is a two-phase automation tool that transforms long-form Yo
 - Analyzes content with Claude AI
 - Generates optimized clips for Instagram/TikTok
 
-**Phase 2 (Roadmap):** Automated caption generation
-- Dynamic caption overlays using Remotion
-- Customizable text styles and animations
-- Auto-synced captions with speech timing
+**Phase 2 (Implemented):** Animated caption generation
+- CapCut-style word-by-word animated captions using Remotion
+- Three customizable styles: background (CapCut), scaling (pop), colored (highlight)
+- Auto-synced captions with word-level timing from Whisper
 
 ## Features
 
@@ -122,6 +122,31 @@ python ai_clip_generator.py "https://youtube.com/watch?v=ID" --skip-transcriptio
 python ai_clip_generator.py "https://youtube.com/watch?v=ID" --skip-download --skip-transcription
 ```
 
+### Animated Captions (Phase 2)
+
+Generate clips with animated word-by-word captions:
+
+```bash
+# Add captions with default style (background/CapCut style)
+python ai_clip_generator.py "https://youtube.com/watch?v=ID" --add-captions
+
+# Choose a caption style
+python ai_clip_generator.py "https://youtube.com/watch?v=ID" --add-captions --caption-style scaling
+
+# Customize accent color
+python ai_clip_generator.py "https://youtube.com/watch?v=ID" --add-captions --caption-color "#FF5500"
+```
+
+**Caption styles:**
+- `background` (default) - CapCut-style animated box jumping word-to-word
+- `scaling` - Words pop/bounce when active
+- `colored` - Clean highlight on active word
+
+**Note:** Captions require Node.js 18+ and Remotion. Run the setup script first:
+```bash
+./scripts/install-remotion.sh
+```
+
 ## Workflow Explanation
 
 The AI Video Clipper follows a 6-step automated workflow:
@@ -213,6 +238,14 @@ vid-clipper/
 ├── requirements.txt            # Python dependencies
 ├── prompt_templates/
 │   └── clip_analysis_prompt.md # Claude analysis template
+├── remotion-captions/          # Phase 2: Remotion caption project
+│   ├── src/
+│   │   ├── CaptionedClip.tsx   # Main composition
+│   │   ├── CaptionStyles/      # Animation styles
+│   │   └── convert-whisper.ts  # Whisper JSON converter
+│   └── package.json            # Node.js dependencies
+├── scripts/
+│   └── install-remotion.sh     # Remotion setup script
 ├── downloads/
 │   └── VIDEO_ID/              # Per-video directory
 │       ├── original.mp4       # Downloaded video
@@ -224,8 +257,8 @@ vid-clipper/
 │       └── clips/             # Generated clips
 │           ├── clip_001_hook.mp4
 │           ├── clip_001_hook_instagram.mp4
-│           ├── clip_002_demo.mp4
-│           ├── clip_002_demo_instagram.mp4
+│           ├── clip_001_hook_captioned.mp4     # With captions
+│           ├── clip_001_hook_instagram_captioned.mp4
 │           └── ...
 └── logs/                       # (future use)
 ```
@@ -432,36 +465,70 @@ The `clip_recommendations.json` contains:
    - Request specific clip types (e.g., "focus on funny moments")
    - Experiment with different selection criteria
 
-## Phase 2 Roadmap: Caption Generation
+## Phase 2: Animated Captions
 
-**Status:** Planned for future release
+**Status:** Implemented
 
-**Features:**
-- Automated caption overlays using Remotion
-- Word-level timing from Whisper transcript
-- Customizable caption styles:
-  - Font, size, color, positioning
-  - Highlight current word
-  - Background boxes for readability
-- Animation presets (fade, slide, pop)
-- Export with captions burned into video
+Remotion-powered animated captions that sync with speech timing from Whisper.
 
-**Timeline:** TBD
+### Setup
 
-**Preview workflow:**
+Requires Node.js 18+:
+
 ```bash
-# Phase 2 usage (future)
-python ai_clip_generator.py "URL" --add-captions --caption-style "bold"
+# Install Remotion dependencies
+./scripts/install-remotion.sh
+
+# Or manually
+cd remotion-captions && npm install
 ```
 
-**Why Remotion?**
-- Programmatic video editing with React
-- Frame-perfect caption timing
-- Professional-quality output
-- Open-source and customizable
+### Usage
 
-**Get involved:**
-If you're interested in contributing to Phase 2, please open an issue or discussion!
+```bash
+# Generate clips with animated captions
+python ai_clip_generator.py "URL" --add-captions
+
+# Choose style: background, scaling, or colored
+python ai_clip_generator.py "URL" --add-captions --caption-style scaling
+
+# Custom accent color (hex)
+python ai_clip_generator.py "URL" --add-captions --caption-color "#FF00FF"
+```
+
+### Caption Styles
+
+| Style | Description | Best For |
+|-------|-------------|----------|
+| `background` | CapCut-style animated box behind active word | Most content (default) |
+| `scaling` | Word pops/bounces when spoken | Energetic, punchy videos |
+| `colored` | Active word highlighted in accent color | Professional, clean look |
+
+### Output Files
+
+When captions are enabled, additional files are generated:
+
+```
+clips/
+├── clip_001_hook.mp4                    # Standard (no captions)
+├── clip_001_hook_instagram.mp4          # 9:16 (no captions)
+├── clip_001_hook_captioned.mp4          # With animated captions
+└── clip_001_hook_instagram_captioned.mp4 # 9:16 with captions
+```
+
+### Preview in Browser
+
+```bash
+cd remotion-captions
+npx remotion studio
+```
+
+### Technical Details
+
+- Uses `@remotion/captions` for TikTok-style word segmentation
+- Word-level timestamps from Whisper JSON
+- Spring animations for smooth transitions
+- 1080x1920 resolution optimized for mobile
 
 ## Examples
 

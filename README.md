@@ -4,9 +4,38 @@ Transform long-form **YouTube videos** or **local video files** into viral-ready
 
 ---
 
+## Quick Start (Choose One)
+
+### Option 1: Use with an AI Assistant (Easiest)
+Give the skill file to your AI assistant (Claude Code, Codex, etc.):
+
+```
+"Install this skill: universal-video-clipper.skill"
+```
+
+Then simply ask:
+> "Create viral clips from this YouTube video: https://www.youtube.com/watch?v=VIDEO_ID"
+
+### Option 2: Use with Claude Code / Codex
+Tell your AI assistant to install this project:
+
+```
+"Install this project into your skill catalog"
+```
+
+The AI will automatically use the skill when you ask for video clips.
+
+### Option 3: Run Directly (No AI)
+```bash
+python ai_clip_generator.py "https://www.youtube.com/watch?v=VIDEO_ID"
+python ai_clip_generator.py "/path/to/video.mp4"
+```
+
+---
+
 ## How to Use This Tool
 
-Talk to this tool (or an AI assistant) using natural language:
+Once installed (or running directly), use natural language:
 
 ### For YouTube Videos
 > "Create viral clips from this YouTube video: https://www.youtube.com/watch?v=VIDEO_ID"

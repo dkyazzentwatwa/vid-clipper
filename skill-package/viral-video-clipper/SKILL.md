@@ -7,33 +7,86 @@ description: Automatically create viral-worthy short clips from YouTube videos u
 
 Transform long-form YouTube videos into viral-worthy short clips optimized for Instagram Reels and TikTok using AI-powered analysis.
 
-## Quick Start
+---
 
-```bash
-python3 scripts/ai_clip_generator.py "<youtube-url>"
+## How to Talk to This Tool
+
+Use natural language to create clips:
+
+> "Create viral clips from this YouTube video: https://www.youtube.com/watch?v=VIDEO_ID"
+
+> "Turn this YouTube video into Instagram Reels"
+
+> "Extract the best highlights from this tutorial for TikTok"
+
+> "Make short clips from this video with animated captions"
+
+---
+
+## What You Get
+
+For each YouTube video processed:
+
+- **3-7 viral-worthy clips** (15-60 seconds each)
+- **Dual formats** - Standard (original aspect ratio) + Instagram 9:16 vertical
+- **Optional animated captions** - CapCut-style word-by-word highlighting
+- **Summary report** with:
+  - Virality scores (1-10)
+  - Suggested captions with emojis
+  - Hashtag recommendations
+  - Target audience insights
+
+### Sample Output Structure
+```
+downloads/{video_id}/
+├── original.mp4                    # Downloaded YouTube video
+├── original.json                   # Whisper transcript with timestamps
+├── metadata.json                   # Video title, duration, uploader
+├── analysis_request.md             # AI analysis prompt
+├── clip_recommendations.json       # AI-generated clip suggestions
+├── SUMMARY.md                      # Final report
+└── clips/
+    ├── clip_001_hook.mp4           # Standard clip
+    ├── clip_001_hook_instagram.mp4 # 9:16 vertical
+    ├── clip_001_hook_captioned.mp4 # With animated captions
+    └── ...
 ```
 
-The script will:
-1. Download the YouTube video
-2. Transcribe audio with timestamps using Whisper
-3. Generate an AI analysis prompt
-4. **[Pause for user]** Run Claude on the analysis prompt
-5. Generate clips (standard + Instagram 9:16 versions)
-6. Create summary report with captions and hashtags
+---
+
+## How It Works
+
+### Step 1: Ingest & Transcribe
+- Downloads YouTube video via yt-dlp
+- Transcribes audio using Whisper with timestamp precision
+- Saves to `downloads/{video_id}/`
+
+### Step 2: AI Analysis (Interactive)
+The script pauses for AI analysis:
+1. Review `analysis_request.md` (contains transcript + instructions)
+2. Run AI on this prompt to generate clip recommendations
+3. Save results as `clip_recommendations.json`
+4. Press Enter to continue
+
+### Step 3: Generate Clips
+- Validates clip timestamps
+- Creates standard and Instagram 9:16 versions
+- Optionally adds animated captions
+
+---
 
 ## Prerequisites
 
-Verify dependencies are installed:
+Verify these are installed:
 
 ```bash
 # Check installations
-yt-dlp --version        # YouTube downloader
-whisper --help          # Audio transcription
-ffmpeg -version         # Video processing
-node --version          # Node.js 18+ (required for captions)
+ffmpeg -version                      # Video processing
+yt-dlp --version                    # YouTube downloader
+whisper --help                      # Audio transcription
 ```
 
-If missing, install them:
+If missing, install:
 
 ```bash
 # Install Python dependencies
@@ -45,80 +98,41 @@ brew install ffmpeg
 # Install ffmpeg (Linux)
 sudo apt install ffmpeg
 
-# Install Node.js (required for captions)
-brew install node       # macOS
-# Or use nvm: nvm install 18
-
-# Install Remotion dependencies (for captions)
-cd remotion-captions && npm install
+# Install Node.js 18+ (for animated captions)
+brew install node
 ```
 
-## Workflow
+---
 
-### Step 1: Download and Transcribe
+## Technical Reference
 
-Run the main script with a YouTube URL:
+### CLI Command
 
 ```bash
+# Basic usage
 python3 scripts/ai_clip_generator.py "https://www.youtube.com/watch?v=VIDEO_ID"
+
+# Skip download if video exists
+python3 scripts/ai_clip_generator.py <url> --skip-download
+
+# Skip transcription if done
+python3 scripts/ai_clip_generator.py <url> --skip-transcription
+
+# With animated captions
+python3 scripts/ai_clip_generator.py <url> --add-captions
+python3 scripts/ai_clip_generator.py <url> --add-captions --caption-style scaling
+python3 scripts/ai_clip_generator.py <url> --add-captions --caption-color "#FF6600"
 ```
 
-The script will:
-- Extract video ID from URL
-- Download video using yt-dlp (tries Chrome cookies → Firefox cookies → no cookies)
-- Transcribe audio with Whisper (base model, fallback to tiny)
-- Save files to `downloads/{video_id}/`
+### Caption Styles
 
-**Output files:**
-- `original.mp4` - Downloaded video
-- `original.json` - Whisper transcript with timestamps
-- `metadata.json` - Video title, duration, uploader
-- `analysis_request.md` - Generated Claude prompt
+| Style | Description | Best For |
+|-------|-------------|----------|
+| `background` | Animated highlight box behind words (default) | CapCut-style, modern IG look |
+| `scaling` | Words scale up with spring animation | Energetic, punchy content |
+| `colored` | Active word highlighted in accent color | Clean, professional look |
 
-### Step 2: AI Analysis (Interactive)
-
-The script pauses and displays:
-
-```
-🤖 Claude AI Analysis Required
-============================================================
-Next steps:
-1. Review the analysis prompt at:
-   downloads/{video_id}/analysis_request.md
-
-2. Run Claude Code on this prompt to generate clip recommendations
-
-3. Save Claude's JSON output to:
-   downloads/{video_id}/clip_recommendations.json
-
-4. Press Enter when the JSON file is ready...
-============================================================
-```
-
-**What to do:**
-1. Read the generated `analysis_request.md` file
-2. The file contains the full transcript with timestamps and detailed instructions
-3. Run Claude (in a separate session) on this prompt
-4. Claude will analyze the video and return JSON with 3-7 clip recommendations
-5. Save Claude's JSON response to `clip_recommendations.json`
-6. Return to the script and press Enter
-
-**Important:** The JSON must contain valid clip recommendations. See `references/clip_analysis_prompt.md` for the required format.
-
-### Step 3: Generate Clips
-
-After you provide the JSON file, the script automatically:
-- Validates clip recommendations (timestamps, required fields)
-- Generates each clip using FFmpeg
-- Creates Instagram 9:16 vertical versions
-- Generates a summary report
-
-**Output:**
-- `clips/clip_001_*.mp4` - Standard clips (landscape)
-- `clips/clip_001_*_instagram.mp4` - Instagram versions (9:16 vertical)
-- `clips/clip_001_*_captioned.mp4` - With animated captions (if `--add-captions`)
-- `clips/clip_001_*_instagram_captioned.mp4` - Instagram with captions (if `--add-captions`)
-- `SUMMARY.md` - Report with captions, hashtags, virality scores
+---
 
 ## Clip Selection Criteria
 
@@ -134,6 +148,8 @@ The AI analysis identifies viral-worthy moments based on:
 - Self-contained: Each clip makes sense independently
 - Natural boundaries: No mid-sentence cuts
 - Platform: Optimized for Instagram Reels and TikTok (9:16 mobile vertical)
+
+---
 
 ## JSON Output Format
 
@@ -166,93 +182,20 @@ The AI analysis must return JSON in this format:
 
 See `references/clip_analysis_prompt.md` for the complete prompt template.
 
-## Advanced Usage
-
-### Skip Flags
-
-```bash
-# Skip download if video already exists
-python3 scripts/ai_clip_generator.py <url> --skip-download
-
-# Skip transcription if already done
-python3 scripts/ai_clip_generator.py <url> --skip-transcription
-
-# Skip both (useful for re-generating clips with different recommendations)
-python3 scripts/ai_clip_generator.py <url> --skip-download --skip-transcription
-```
-
-### Animated Captions (Phase 2)
-
-Generate CapCut-style animated captions using Remotion:
-
-```bash
-# Add captions with default style (background)
-python3 scripts/ai_clip_generator.py <url> --add-captions
-
-# Choose specific caption style
-python3 scripts/ai_clip_generator.py <url> --add-captions --caption-style scaling
-
-# Custom accent color (default: yellow #FFFF00)
-python3 scripts/ai_clip_generator.py <url> --add-captions --caption-color "#FF6600"
-```
-
-**Available Caption Styles:**
-
-| Style | Description | Best For |
-|-------|-------------|----------|
-| `background` | Animated highlight box behind words (default) | CapCut-style, modern IG look |
-| `scaling` | Words scale up with spring animation | Energetic, punchy content |
-| `colored` | Active word highlighted in accent color | Clean, professional look |
-
-**Prerequisites for Captions:**
-- Node.js 18+ required
-- First run: `cd remotion-captions && npm install`
-
-Captioned clips will be saved with `_captioned` suffix alongside standard clips.
-
-### Working Directory Structure
-
-```
-downloads/
-└── {video_id}/
-    ├── original.mp4               # Downloaded video
-    ├── original.json              # Whisper transcript
-    ├── metadata.json              # Video info
-    ├── analysis_request.md        # Claude prompt
-    ├── clip_recommendations.json  # AI analysis output
-    ├── SUMMARY.md                 # Final report
-    └── clips/
-        ├── clip_001_hook.mp4
-        ├── clip_001_hook_instagram.mp4
-        └── ...
-```
+---
 
 ## Troubleshooting
 
-See `references/troubleshooting.md` for detailed solutions.
+### Quick Fixes
 
-**Quick fixes:**
+| Issue | Solution |
+|-------|----------|
+| Download fails | `brew upgrade yt-dlp` |
+| Transcription fails | `pip install openai-whisper` |
+| FFmpeg not found | `brew install ffmpeg` (macOS) / `sudo apt install ffmpeg` (Linux) |
+| Invalid JSON from AI | Remove markdown code blocks (`json`), ensure all required fields present |
 
-**Download fails:**
-```bash
-brew upgrade yt-dlp
-```
-
-**Transcription fails:**
-```bash
-pip install openai-whisper
-```
-
-**FFmpeg not found:**
-```bash
-brew install ffmpeg  # macOS
-sudo apt install ffmpeg  # Linux
-```
-
-**Invalid JSON from Claude:**
-- Remove markdown code blocks (```json)
-- Ensure all required fields are present
-- Validate timestamps are within video duration
+---
 
 ## Key Functions
 
@@ -268,15 +211,19 @@ In `scripts/ai_clip_generator.py`:
 - `convert_whisper_to_captions(...)` - Whisper JSON to Remotion format
 - `generate_summary_report(...)` - Create final report
 
+---
+
 ## Design Decisions
 
-1. **File-based Claude integration** - Simple, no API costs, easy debugging
+1. **File-based AI integration** - Simple, no API costs, easy debugging
 2. **Interactive analysis step** - User reviews prompt and AI output before generation
 3. **Cookie-based downloads** - Handles age-restricted and private videos
 4. **Whisper base model** - Balance of speed and accuracy
 5. **Dual clip formats** - Standard landscape + Instagram 9:16 vertical
 6. **Remotion for captions** - React-based rendering for animated word-by-word captions
 7. **Caption positioning** - Captions positioned within video content (not black bars) for 9:16 letterboxed videos
+
+---
 
 ## Next Steps After Clip Generation
 

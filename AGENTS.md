@@ -8,14 +8,35 @@
 4. FFmpeg clip rendering,
 5. optional caption workflows.
 
-This repository currently contains:
-- Main script: `/Users/cypher/Public/code/vid-clipper/ai_clip_generator.py`
-- Prompt template: `/Users/cypher/Public/code/vid-clipper/prompt_templates/clip_analysis_prompt.md`
-- Skill package(s):
-  - `/Users/cypher/Public/code/vid-clipper/skill-package/viral-video-clipper`
-  - `/Users/cypher/Public/code/vid-clipper/skill-package/universal-video-clipper`
+---
+
+## How to Talk to This Project (Natural Language)
+
+AI agents and users should interact using natural language prompts. Here are the recommended phrasings:
+
+### For YouTube Videos
+> "Create viral clips from this YouTube video: https://www.youtube.com/watch?v=VIDEO_ID"
+
+> "Turn this YouTube video into Instagram Reels"
+
+> "Extract the best highlights from this tutorial for TikTok"
+
+> "Make short clips from this YouTube video with animated captions"
+
+### For Local/Uploaded Videos
+> "Create short clips from this video file: /path/to/video.mp4"
+
+> "Make Reels from my uploaded video"
+
+### With Additional Options
+> "Create 5 viral clips from this video, skip downloading since I already have it"
+
+> "Extract highlights from this YouTube video with scaling caption style"
+
+---
 
 ## Primary Skill To Use
+
 Use `viral-video-clipper` when the task is to generate clips from a YouTube video.
 Skill file:
 - `/Users/cypher/.codex/skills/viral-video-clipper/SKILL.md`
@@ -23,6 +44,8 @@ Skill file:
 If the user provides a local/uploaded file path, prefer `universal-video-clipper`.
 Skill file:
 - `/Users/cypher/.codex/skills/universal-video-clipper/SKILL.md`
+
+---
 
 ## Standard Operating Workflow
 
@@ -48,6 +71,8 @@ Agent must:
 3. Save JSON to the expected path.
 4. Continue the paused run (press Enter programmatically).
 
+---
+
 ## Dependencies
 Verify before major runs:
 ```bash
@@ -62,6 +87,8 @@ pip install -r /Users/cypher/Public/code/vid-clipper/requirements.txt
 brew install ffmpeg
 ```
 
+---
+
 ## Output Contract
 For each processed video, expected artifacts live under:
 - `/Users/cypher/Public/code/vid-clipper/downloads/<video_id>/`
@@ -75,6 +102,8 @@ Required files:
 - `SUMMARY.md`
 - `clips/*.mp4` (standard + `_instagram.mp4` variants)
 
+---
+
 ## JSON Recommendation Requirements
 `clip_recommendations.json` must contain:
 - top-level `clips` array,
@@ -83,12 +112,16 @@ Required files:
 - timestamp boundaries inside source duration,
 - recommended duration target: 15-60 seconds.
 
+---
+
 ## Project-Specific Guardrails
 1. Do not claim success without verifying rendered files exist.
 2. If transcription succeeds but no JSON transcript appears, inspect Whisper output naming/path behavior.
 3. For silent videos (no audio stream), generate a placeholder transcript and continue with visual-only recommendations.
 4. Keep clip titles filesystem-safe and concise.
 5. Preserve existing user changes in unrelated files.
+
+---
 
 ## Fast Validation Checklist
 After each run:
@@ -102,11 +135,15 @@ Confirm:
 - expected number of clip files were generated,
 - instagram variants exist.
 
+---
+
 ## Troubleshooting Shortcuts
 - Download issues: `brew upgrade yt-dlp`
 - Whisper missing: `pip install openai-whisper`
 - FFmpeg missing: `brew install ffmpeg`
 - Invalid recommendation JSON: remove markdown fences and revalidate required fields.
+
+---
 
 ## Definition of Done
 A task is complete when:

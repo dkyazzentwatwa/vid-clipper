@@ -146,9 +146,9 @@ vid-clipper/
 │   └── youtube_video_clipping_guide.md # Manual process docs
 │
 ├── skill-package/                 # Claude Code skill package
-│   └── viral-video-clipper/      # Skill installation files
+│   └── universal-video-clipper/  # Skill installation files
 │
-└── viral-video-clipper.skill      # Packaged skill file
+└── universal-video-clipper.skill  # Packaged skill file
 ```
 
 ## Critical Code Patterns

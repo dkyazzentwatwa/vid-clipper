@@ -1,3 +1,0 @@
-yt-dlp
-openai-whisper
-# Note: ffmpeg required (install via homebrew: brew install ffmpeg)

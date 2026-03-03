@@ -37,11 +37,8 @@ AI agents and users should interact using natural language prompts. Here are the
 
 ## Primary Skill To Use
 
-Use `viral-video-clipper` when the task is to generate clips from a YouTube video.
-Skill file:
-- `/Users/cypher/.codex/skills/viral-video-clipper/SKILL.md`
+Use the `universal-video-clipper` skill for all video clipping tasks. It handles both YouTube URLs and local video files.
 
-If the user provides a local/uploaded file path, prefer `universal-video-clipper`.
 Skill file:
 - `/Users/cypher/.codex/skills/universal-video-clipper/SKILL.md`
 
@@ -49,16 +46,19 @@ Skill file:
 
 ## Standard Operating Workflow
 
-### A) YouTube Source (`viral-video-clipper`)
+### A) Any Video Source (YouTube or Local)
 Run:
 ```bash
-python3 /Users/cypher/Public/code/vid-clipper/ai_clip_generator.py "<youtube-url>"
+python3 /Users/cypher/Public/code/vid-clipper/ai_clip_generator.py "<youtube-url-or-local-path>"
 ```
 
-### B) Local/Uploaded Source (`universal-video-clipper`)
-Run:
+Examples:
 ```bash
-python3 /Users/cypher/.codex/skills/universal-video-clipper/scripts/ai_clip_generator.py "</absolute/path/to/video>"
+# YouTube
+python3 /Users/cypher/Public/code/vid-clipper/ai_clip_generator.py "https://www.youtube.com/watch?v=VIDEO_ID"
+
+# Local file
+python3 /Users/cypher/Public/code/vid-clipper/ai_clip_generator.py "/path/to/video.mp4"
 ```
 
 ### C) Interactive Analysis Step (Required)

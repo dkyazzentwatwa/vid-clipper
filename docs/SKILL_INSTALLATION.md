@@ -1,20 +1,24 @@
-# Viral Video Clipper Skill - Installation Guide
+# Universal Video Clipper Skill - Installation Guide
 
 ## How to Use This Skill
 
 Once installed, talk to your AI assistant using natural language:
 
+### For YouTube Videos
 > "Create viral clips from this YouTube video: https://www.youtube.com/watch?v=yKeWqGkCaRQ"
 
 > "Turn my video into Instagram Reels"
 
 > "Extract the best moments from this tutorial"
 
-> "Make TikTok clips from my product demo"
+### For Local Video Files
+> "Create clips from this video file: /path/to/video.mp4"
+
+> "Make Reels from my uploaded video"
 
 The AI will automatically use this skill to:
-1. Download the YouTube video
-2. Transcribe audio with timestamps
+1. Accept YouTube URLs or local video files
+2. Download/copy and transcribe audio with timestamps
 3. Analyze the content for viral moments
 4. Generate optimized clips (standard + Instagram 9:16)
 5. Provide ready-to-use captions and hashtags
@@ -23,7 +27,7 @@ The AI will automatically use this skill to:
 
 ## What Is This Skill?
 
-The **Viral Video Clipper** skill is a packaged, reusable AI skill that transforms any long-form YouTube video into viral-worthy short clips optimized for Instagram Reels and TikTok.
+The **Universal Video Clipper** skill is a packaged, reusable AI skill that transforms any long-form video (YouTube or local file) into viral-worthy short clips optimized for Instagram Reels and TikTok.
 
 ### What You Get
 
@@ -37,9 +41,9 @@ For each video processed:
 ### Workflow Overview
 
 ```
-YouTube URL
+YouTube URL or Local Video File
     ↓
-Download video (yt-dlp with cookie support)
+Download video (yt-dlp) OR Copy local file
     ↓
 Transcribe audio (Whisper with timestamps)
     ↓
@@ -58,7 +62,7 @@ Generate clips (FFmpeg)
 
 ### Option 1: Import the Skill (Recommended)
 
-1. Locate the skill file: `viral-video-clipper.skill` (13KB)
+1. Locate the skill file: `universal-video-clipper.skill`
 2. Import into Claude Code using the skills manager
 3. The skill will be available in all future AI assistant sessions
 
@@ -66,10 +70,10 @@ Generate clips (FFmpeg)
 
 ```bash
 # Extract the skill package
-unzip viral-video-clipper.skill -d ~/.claude/skills/
+unzip universal-video-clipper.skill -d ~/.claude/skills/
 
 # Verify installation
-ls ~/.claude/skills/viral-video-clipper/
+ls ~/.claude/skills/universal-video-clipper/
 ```
 
 ---
@@ -79,7 +83,7 @@ ls ~/.claude/skills/viral-video-clipper/
 The skill package contains:
 
 ```
-viral-video-clipper/
+universal-video-clipper/
 ├── SKILL.md                           # Main skill instructions
 ├── scripts/
 │   └── ai_clip_generator.py          # Main orchestrator
@@ -124,7 +128,7 @@ Simply tell your AI assistant what you want:
 ```
 User: Create viral clips from https://www.youtube.com/watch?v=yKeWqGkCaRQ
 
-AI: [Automatically uses the viral-video-clipper skill]
+AI: [Automatically uses the universal-video-clipper skill]
 
     ✅ Downloaded video: "I Made Claude Into A Cybersecurity Agent"
     ✅ Transcribed with Whisper

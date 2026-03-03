@@ -44,9 +44,9 @@ vid-clipper/
 │   └── .gitkeep                   # Future logging directory
 │
 ├── skill-package/                 # Claude Code Skill Package
-│   └── viral-video-clipper/       # Skill source files
+│   └── universal-video-clipper/   # Skill source files (handles YouTube + local files)
 │
-└── viral-video-clipper.skill      # Packaged skill file for installation
+└── universal-video-clipper.skill  # Packaged skill file for installation
 ```
 
 ## What Gets Tracked by Git?

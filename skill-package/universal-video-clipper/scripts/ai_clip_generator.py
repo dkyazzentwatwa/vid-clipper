@@ -6,10 +6,9 @@ Automatically identifies and creates viral-worthy clips from YouTube videos or l
 Usage:
     python ai_clip_generator.py <youtube_url_or_local_file>
 
-Example:
+Examples:
     python ai_clip_generator.py "https://www.youtube.com/watch?v=QE_Nt5dMLHI"
     python ai_clip_generator.py "/path/to/video.mp4"
-    python ai_clip_generator.py <url> --add-captions --caption-style background
 """
 
 import subprocess
@@ -129,15 +128,26 @@ def prepare_local_video(source_path, source_id, output_dir):
 
 
 def download_video(url, video_id, output_dir):
-    """Download video using yt-dlp with cookie fallbacks"""
+    """Download video using yt-dlp with multiple fallback methods"""
     print("\n📥 Downloading video...")
     print(f"   Video ID: {video_id}")
 
     video_path = output_dir / "original.mp4"
     metadata_path = output_dir / "metadata.json"
 
-    # Try multiple download methods
+    # Try multiple download methods (most reliable first)
     download_methods = [
+        {
+            "name": "Android client (most reliable)",
+            "cmd": [
+                "yt-dlp",
+                "--extractor-args", "youtube:player_client=android",
+                "-f", "best[ext=mp4]/best",
+                "--write-info-json",
+                "-o", str(video_path),
+                url
+            ]
+        },
         {
             "name": "Chrome cookies",
             "cmd": [
@@ -333,15 +343,10 @@ def generate_analysis_prompt(transcript_data, metadata, output_dir):
     """Generate Claude analysis prompt from template"""
     print("\n📝 Generating Claude analysis prompt...")
 
-    template_candidates = [
-        Path(__file__).parent.parent / "references" / "clip_analysis_prompt.md",
-        Path(__file__).parent / "prompt_templates" / "clip_analysis_prompt.md",
-        Path(__file__).parents[2] / "prompt_templates" / "clip_analysis_prompt.md",
-    ]
-    template_path = next((p for p in template_candidates if p.exists()), None)
+    template_path = Path(__file__).parent / "prompt_templates" / "clip_analysis_prompt.md"
 
-    if not template_path:
-        print("   ✗ Template not found in expected locations")
+    if not template_path.exists():
+        print(f"   ✗ Template not found: {template_path}")
         sys.exit(1)
 
     with open(template_path, 'r') as f:
@@ -465,180 +470,26 @@ def run_ffmpeg(cmd, description="Running ffmpeg"):
         result = subprocess.run(
             cmd,
             capture_output=True,
-            text=True,
-            check=True
+            text=True
         )
-        return True
-    except subprocess.CalledProcessError as e:
-        print(f"   ✗ Error: {e.stderr[:200]}")
-        return False
-
-
-def check_remotion_available():
-    """Check if Remotion is installed and available"""
-    remotion_dir = Path(__file__).parent.parent.parent.parent / "remotion-captions"
-    if not remotion_dir.exists():
-        # Try alternate location
-        remotion_dir = Path(__file__).parent.parent / "remotion-captions"
-    if not remotion_dir.exists():
-        return False, "Remotion project not found", None
-
-    node_modules = remotion_dir / "node_modules"
-    if not node_modules.exists():
-        return False, "Remotion dependencies not installed. Run: cd remotion-captions && npm install", None
-
-    return True, None, remotion_dir
-
-
-def convert_whisper_to_captions(whisper_json_path, start_time, end_time):
-    """Convert Whisper JSON to Remotion caption format"""
-    with open(whisper_json_path, 'r') as f:
-        whisper_data = json.load(f)
-
-    captions = []
-    offset_ms = start_time * 1000
-
-    for segment in whisper_data.get("segments", []):
-        # Skip segments outside clip range
-        if segment.get("end", 0) < start_time or segment.get("start", 0) > end_time:
-            continue
-
-        # Use word-level timestamps if available
-        words = segment.get("words", [])
-        if words:
-            for word in words:
-                word_start = word.get("start", 0)
-                word_end = word.get("end", 0)
-
-                # Skip words outside clip range
-                if word_end < start_time or word_start > end_time:
-                    continue
-
-                start_ms = max(0, word_start * 1000 - offset_ms)
-                end_ms = word_end * 1000 - offset_ms
-
-                captions.append({
-                    "text": word.get("word", "").strip(),
-                    "startMs": start_ms,
-                    "endMs": end_ms,
-                    "timestampMs": start_ms,
-                    "confidence": word.get("probability")
-                })
-        else:
-            # Fall back to segment-level - distribute timing across words
-            text = segment.get("text", "").strip()
-            words_list = text.split()
-            seg_start = segment.get("start", 0)
-            seg_end = segment.get("end", 0)
-            seg_duration = (seg_end - seg_start) * 1000
-
-            if words_list:
-                word_duration = seg_duration / len(words_list)
-                for i, word_text in enumerate(words_list):
-                    word_start_ms = seg_start * 1000 + i * word_duration - offset_ms
-                    word_end_ms = word_start_ms + word_duration
-
-                    if word_start_ms < 0:
-                        continue
-
-                    captions.append({
-                        "text": word_text,
-                        "startMs": max(0, word_start_ms),
-                        "endMs": word_end_ms,
-                        "timestampMs": max(0, word_start_ms),
-                        "confidence": None
-                    })
-
-    return captions
-
-
-def generate_captions_for_clip(clip_path, whisper_json_path, start_time, end_time, output_path, style="background", accent_color="#FFFF00"):
-    """Generate captioned video using Remotion"""
-    print(f"      🎬 Generating captions with style: {style}...")
-
-    # Check if Remotion is available
-    available, error, remotion_dir = check_remotion_available()
-    if not available:
-        print(f"      ⚠️  {error}")
-        return False
-
-    # Convert Whisper JSON to captions
-    captions = convert_whisper_to_captions(whisper_json_path, start_time, end_time)
-    if not captions:
-        print(f"      ⚠️  No captions found for this time range")
-        return False
-
-    # Calculate duration in frames
-    fps = 30
-    duration_frames = int((end_time - start_time) * fps)
-
-    # Copy clip to Remotion public folder for serving
-    public_dir = remotion_dir / "public"
-    public_dir.mkdir(exist_ok=True)
-    temp_video_name = f"temp_clip_{Path(clip_path).stem}.mp4"
-    temp_video_path = public_dir / temp_video_name
-    shutil.copy2(clip_path, temp_video_path)
-
-    # Create props JSON for Remotion - use staticFile path
-    props = {
-        "videoSrc": temp_video_name,  # Remotion will serve from public/
-        "captions": captions,
-        "style": style,
-        "accentColor": accent_color,
-        "fontFamily": "Inter, system-ui, sans-serif",
-        "durationInFrames": duration_frames
-    }
-
-    # Write props to temp file
-    props_file = Path(output_path).parent / f".caption_props_{Path(output_path).stem}.json"
-    with open(props_file, 'w') as f:
-        json.dump(props, f)
-
-    # Build the render command using Remotion CLI
-    cmd = [
-        "npx", "remotion", "render",
-        "src/index.ts",
-        "CaptionedClip",
-        str(Path(output_path).resolve()),
-        "--props", str(props_file.resolve()),
-        "--overwrite"
-    ]
-
-    try:
-        result = subprocess.run(
-            cmd,
-            cwd=str(remotion_dir),
-            capture_output=True,
-            text=True,
-            timeout=600  # 10 minute timeout
-        )
-
-        # Clean up temp files
-        if props_file.exists():
-            props_file.unlink()
-        if temp_video_path.exists():
-            temp_video_path.unlink()
-
+        # Check return code explicitly instead of check=True
+        # ffmpeg may output warnings to stderr but still succeed
         if result.returncode != 0:
-            print(f"      ✗ Caption render failed: {result.stderr[:300]}")
+            # Only print stderr on actual failure
+            stderr_clean = result.stderr.strip()
+            if stderr_clean:
+                # Extract just the error line if possible
+                error_lines = [l for l in stderr_clean.split('\n') if 'error' in l.lower() or 'failed' in l.lower()]
+                if error_lines:
+                    print(f"   ✗ Error: {error_lines[0][:200]}")
+                else:
+                    print(f"   ✗ Error: {stderr_clean[:200]}")
+            else:
+                print(f"   ✗ FFmpeg failed with exit code {result.returncode}")
             return False
-
-        print(f"      ✓ Captions generated!")
         return True
-
-    except subprocess.TimeoutExpired:
-        print(f"      ✗ Caption render timed out")
-        if props_file.exists():
-            props_file.unlink()
-        if temp_video_path.exists():
-            temp_video_path.unlink()
-        return False
-    except FileNotFoundError:
-        print(f"      ✗ Node.js/npx not found. Install Node.js 18+")
-        if props_file.exists():
-            props_file.unlink()
-        if temp_video_path.exists():
-            temp_video_path.unlink()
+    except Exception as e:
+        print(f"   ✗ Error running ffmpeg: {e}")
         return False
 
 
@@ -655,7 +506,7 @@ def generate_clips(video_path, recommendations, output_dir, add_captions=False, 
 
     # Check Remotion availability if captions requested
     if add_captions:
-        available, error, _ = check_remotion_available()
+        available, error = check_remotion_available()
         if not available:
             print(f"\n   ⚠️  Captions disabled: {error}")
             add_captions = False
@@ -786,7 +637,7 @@ Generated {len(generated_files)} files in `clips/` directory:
 ## Next Steps
 
 1. **Review each clip** for quality and content
-2. **Add captions** using --add-captions flag or editing software
+2. **Add captions** using Remotion or editing software (Phase 2)
 3. **Add trending audio/music** in Instagram/TikTok editor
 4. **Post with optimized captions** and hashtags from recommendations
 5. **Track performance** and iterate on successful patterns
@@ -802,6 +653,174 @@ Generated by AI Video Clipper
     return report_path
 
 
+def check_remotion_available():
+    """Check if Remotion is installed and available"""
+    remotion_dir = Path(__file__).parent / "remotion-captions"
+    if not remotion_dir.exists():
+        return False, "Remotion project not found"
+
+    node_modules = remotion_dir / "node_modules"
+    if not node_modules.exists():
+        return False, "Remotion dependencies not installed. Run: cd remotion-captions && npm install"
+
+    return True, None
+
+
+def convert_whisper_to_captions(whisper_json_path, start_time, end_time):
+    """Convert Whisper JSON to Remotion caption format"""
+    with open(whisper_json_path, 'r') as f:
+        whisper_data = json.load(f)
+
+    captions = []
+    offset_ms = start_time * 1000
+
+    for segment in whisper_data.get("segments", []):
+        # Skip segments outside clip range
+        if segment.get("end", 0) < start_time or segment.get("start", 0) > end_time:
+            continue
+
+        # Use word-level timestamps if available
+        words = segment.get("words", [])
+        if words:
+            for word in words:
+                word_start = word.get("start", 0)
+                word_end = word.get("end", 0)
+
+                # Skip words outside clip range
+                if word_end < start_time or word_start > end_time:
+                    continue
+
+                start_ms = max(0, word_start * 1000 - offset_ms)
+                end_ms = word_end * 1000 - offset_ms
+
+                captions.append({
+                    "text": word.get("word", "").strip(),
+                    "startMs": start_ms,
+                    "endMs": end_ms,
+                    "timestampMs": start_ms,
+                    "confidence": word.get("probability")
+                })
+        else:
+            # Fall back to segment-level - distribute timing across words
+            text = segment.get("text", "").strip()
+            words_list = text.split()
+            seg_start = segment.get("start", 0)
+            seg_end = segment.get("end", 0)
+            seg_duration = (seg_end - seg_start) * 1000
+
+            if words_list:
+                word_duration = seg_duration / len(words_list)
+                for i, word_text in enumerate(words_list):
+                    word_start_ms = seg_start * 1000 + i * word_duration - offset_ms
+                    word_end_ms = word_start_ms + word_duration
+
+                    if word_start_ms < 0:
+                        continue
+
+                    captions.append({
+                        "text": word_text,
+                        "startMs": max(0, word_start_ms),
+                        "endMs": word_end_ms,
+                        "timestampMs": max(0, word_start_ms),
+                        "confidence": None
+                    })
+
+    return captions
+
+
+def generate_captions_for_clip(clip_path, whisper_json_path, start_time, end_time, output_path, style="background", accent_color="#FFFF00"):
+    """Generate captioned video using Remotion"""
+    print(f"      🎬 Generating captions with style: {style}...")
+
+    remotion_dir = Path(__file__).parent / "remotion-captions"
+
+    # Check if Remotion is available
+    available, error = check_remotion_available()
+    if not available:
+        print(f"      ⚠️  {error}")
+        return False
+
+    # Convert Whisper JSON to captions
+    captions = convert_whisper_to_captions(whisper_json_path, start_time, end_time)
+    if not captions:
+        print(f"      ⚠️  No captions found for this time range")
+        return False
+
+    # Calculate duration in frames
+    fps = 30
+    duration_frames = int((end_time - start_time) * fps)
+
+    # Copy clip to Remotion public folder for serving
+    import shutil
+    public_dir = remotion_dir / "public"
+    public_dir.mkdir(exist_ok=True)
+    temp_video_name = f"temp_clip_{Path(clip_path).stem}.mp4"
+    temp_video_path = public_dir / temp_video_name
+    shutil.copy2(clip_path, temp_video_path)
+
+    # Create props JSON for Remotion - use staticFile path
+    props = {
+        "videoSrc": temp_video_name,  # Remotion will serve from public/
+        "captions": captions,
+        "style": style,
+        "accentColor": accent_color,
+        "fontFamily": "Inter, system-ui, sans-serif",
+        "durationInFrames": duration_frames
+    }
+
+    # Write props to temp file
+    props_file = Path(output_path).parent / f".caption_props_{Path(output_path).stem}.json"
+    with open(props_file, 'w') as f:
+        json.dump(props, f)
+
+    # Build the render command using Remotion CLI
+    cmd = [
+        "npx", "remotion", "render",
+        "src/index.ts",
+        "CaptionedClip",
+        str(Path(output_path).resolve()),
+        "--props", str(props_file.resolve()),
+        "--overwrite"
+    ]
+
+    try:
+        result = subprocess.run(
+            cmd,
+            cwd=str(remotion_dir),
+            capture_output=True,
+            text=True,
+            timeout=600  # 10 minute timeout
+        )
+
+        # Clean up temp files
+        if props_file.exists():
+            props_file.unlink()
+        if temp_video_path.exists():
+            temp_video_path.unlink()
+
+        if result.returncode != 0:
+            print(f"      ✗ Caption render failed: {result.stderr[:300]}")
+            return False
+
+        print(f"      ✓ Captions generated!")
+        return True
+
+    except subprocess.TimeoutExpired:
+        print(f"      ✗ Caption render timed out")
+        if props_file.exists():
+            props_file.unlink()
+        if temp_video_path.exists():
+            temp_video_path.unlink()
+        return False
+    except FileNotFoundError:
+        print(f"      ✗ Node.js/npx not found. Install Node.js 18+")
+        if props_file.exists():
+            props_file.unlink()
+        if temp_video_path.exists():
+            temp_video_path.unlink()
+        return False
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="AI-Powered Video Clipper - Create viral clips from YouTube URLs or local video files"
@@ -809,7 +828,7 @@ def main():
     parser.add_argument("source", help="YouTube URL or local video file path")
     parser.add_argument("--skip-download", action="store_true", help="Skip download if video already exists")
     parser.add_argument("--skip-transcription", action="store_true", help="Skip transcription if it already exists")
-    parser.add_argument("--add-captions", action="store_true", help="Generate animated captions using Remotion")
+    parser.add_argument("--add-captions", action="store_true", help="Generate animated captions using Remotion (Phase 2)")
     parser.add_argument("--caption-style", choices=["background", "scaling", "colored"], default="background",
                         help="Caption animation style (default: background)")
     parser.add_argument("--caption-color", default="#FFFF00", help="Accent color for captions (default: #FFFF00)")
@@ -852,8 +871,9 @@ def main():
 
         print(f"✓ Output directory: {output_dir}")
 
-        # Download video
-        existing_video = next((p for p in output_dir.glob("original.*") if p.is_file()), None)
+        # Download or copy video (look for video files only)
+        video_extensions = {'.mp4', '.mov', '.mkv', '.avi', '.webm'}
+        existing_video = next((p for p in output_dir.glob("original.*") if p.is_file() and p.suffix.lower() in video_extensions), None)
 
         if source_type == "youtube":
             video_path = output_dir / "original.mp4"

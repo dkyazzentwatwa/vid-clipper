@@ -128,15 +128,26 @@ def prepare_local_video(source_path, source_id, output_dir):
 
 
 def download_video(url, video_id, output_dir):
-    """Download video using yt-dlp with cookie fallbacks"""
+    """Download video using yt-dlp with multiple fallback methods"""
     print("\n📥 Downloading video...")
     print(f"   Video ID: {video_id}")
 
     video_path = output_dir / "original.mp4"
     metadata_path = output_dir / "metadata.json"
 
-    # Try multiple download methods
+    # Try multiple download methods (most reliable first)
     download_methods = [
+        {
+            "name": "Android client (most reliable)",
+            "cmd": [
+                "yt-dlp",
+                "--extractor-args", "youtube:player_client=android",
+                "-f", "best[ext=mp4]/best",
+                "--write-info-json",
+                "-o", str(video_path),
+                url
+            ]
+        },
         {
             "name": "Chrome cookies",
             "cmd": [
@@ -459,12 +470,26 @@ def run_ffmpeg(cmd, description="Running ffmpeg"):
         result = subprocess.run(
             cmd,
             capture_output=True,
-            text=True,
-            check=True
+            text=True
         )
+        # Check return code explicitly instead of check=True
+        # ffmpeg may output warnings to stderr but still succeed
+        if result.returncode != 0:
+            # Only print stderr on actual failure
+            stderr_clean = result.stderr.strip()
+            if stderr_clean:
+                # Extract just the error line if possible
+                error_lines = [l for l in stderr_clean.split('\n') if 'error' in l.lower() or 'failed' in l.lower()]
+                if error_lines:
+                    print(f"   ✗ Error: {error_lines[0][:200]}")
+                else:
+                    print(f"   ✗ Error: {stderr_clean[:200]}")
+            else:
+                print(f"   ✗ FFmpeg failed with exit code {result.returncode}")
+            return False
         return True
-    except subprocess.CalledProcessError as e:
-        print(f"   ✗ Error: {e.stderr[:200]}")
+    except Exception as e:
+        print(f"   ✗ Error running ffmpeg: {e}")
         return False
 
 
@@ -846,8 +871,9 @@ def main():
 
         print(f"✓ Output directory: {output_dir}")
 
-        # Download or copy video
-        existing_video = next((p for p in output_dir.glob("original.*") if p.is_file()), None)
+        # Download or copy video (look for video files only)
+        video_extensions = {'.mp4', '.mov', '.mkv', '.avi', '.webm'}
+        existing_video = next((p for p in output_dir.glob("original.*") if p.is_file() and p.suffix.lower() in video_extensions), None)
 
         if source_type == "youtube":
             video_path = output_dir / "original.mp4"

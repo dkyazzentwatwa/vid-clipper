@@ -242,6 +242,19 @@ This tool is designed for two types of users:
 
 ---
 
+## AI Assistant Integration (Optional)
+
+If you use an AI assistant (like Claude Code), you can import the packaged skill:
+
+**`universal-video-clipper.skill`** - A packaged skill file (ZIP archive) containing:
+- SKILL.md with instructions for the AI
+- Reference documentation
+- Helper scripts
+
+To use it, import `universal-video-clipper.skill` into your AI assistant's skill manager.
+
+---
+
 ## License
 
 Open source - feel free to use, modify, and distribute.

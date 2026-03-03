@@ -1,6 +1,6 @@
 # AI Video Clipper
 
-Transform long-form YouTube videos into viral-ready short clips for Instagram Reels and TikTok using AI-powered analysis.
+Transform long-form **YouTube videos** or **local video files** into viral-ready short clips for Instagram Reels and TikTok using AI-powered analysis.
 
 ---
 
@@ -66,13 +66,19 @@ downloads/{video_id}/
 
 ## Quick Example
 
-**Input:** YouTube URL for a tech tutorial
+### YouTube Input
+**Input:** `https://www.youtube.com/watch?v=VIDEO_ID`
 
 **Output:** 3-5 ready-to-post clips with:
 - Virality scores (1-10)
 - Suggested captions with emojis
 - Hashtag recommendations
 - Standard + Instagram versions
+
+### Local File Input
+**Input:** `/Users/you/Videos/my_recording.mp4`
+
+**Output:** Same as above - works with any MP4, MOV, or video file on your computer
 
 ---
 
@@ -106,11 +112,13 @@ If you prefer direct script execution:
 # YouTube video
 python ai_clip_generator.py "https://www.youtube.com/watch?v=VIDEO_ID"
 
-# Local video file
+# Local video file (MP4, MOV, etc.)
 python ai_clip_generator.py "/path/to/video.mp4"
+python ai_clip_generator.py "~/Movies/my_recording.mov"
 
 # With options
 python ai_clip_generator.py "URL" --add-captions
+python ai_clip_generator.py "/path/to/video.mp4" --add-captions
 python ai_clip_generator.py "URL" --skip-download
 ```
 
@@ -135,8 +143,8 @@ python ai_clip_generator.py "URL" --skip-download --skip-transcription
 ## Workflow Details
 
 ### Step 1: Video Ingest
-- **YouTube:** Downloads via yt-dlp (tries Chrome cookies → Firefox → no cookies)
-- **Local files:** Copies to working directory
+- **YouTube URLs:** Downloads via yt-dlp (tries Chrome cookies → Firefox → no cookies)
+- **Local files:** Copies to working directory (supports MP4, MOV, MKV, and most video formats)
 
 ### Step 2: Transcription
 - Uses OpenAI Whisper for speech-to-text

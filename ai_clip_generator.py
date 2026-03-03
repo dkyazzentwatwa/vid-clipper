@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 """
 AI-Powered Video Clipper
-Automatically identifies and creates viral-worthy clips from YouTube videos using Claude AI.
+Automatically identifies and creates viral-worthy clips from YouTube videos or local files using Claude AI.
 
 Usage:
-    python ai_clip_generator.py <youtube_url>
+    python ai_clip_generator.py <youtube_url_or_local_file>
 
-Example:
+Examples:
     python ai_clip_generator.py "https://www.youtube.com/watch?v=QE_Nt5dMLHI"
+    python ai_clip_generator.py "/path/to/video.mp4"
 """
 
 import subprocess
@@ -15,6 +16,7 @@ import os
 import sys
 import json
 import re
+import shutil
 from pathlib import Path
 from datetime import datetime
 import argparse
@@ -34,6 +36,95 @@ def parse_youtube_url(url):
             return match.group(1)
 
     raise ValueError(f"Could not extract video ID from URL: {url}")
+
+
+def is_youtube_url(value):
+    """Check if input looks like a YouTube URL"""
+    return bool(re.search(r"(youtube\.com|youtu\.be)", str(value)))
+
+
+def slugify(value):
+    """Create filesystem-safe slug"""
+    safe = re.sub(r"[^\w\s-]", "", value).strip().lower()
+    safe = re.sub(r"[-\s]+", "_", safe)
+    return safe or "video"
+
+
+def get_local_video_metadata(video_path, source_id):
+    """Extract metadata from local video using ffprobe"""
+    cmd = [
+        "ffprobe",
+        "-v", "error",
+        "-show_format",
+        "-show_streams",
+        "-of", "json",
+        str(video_path)
+    ]
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+        info = json.loads(result.stdout)
+    except Exception:
+        info = {}
+
+    duration = 0
+    fmt = info.get("format", {})
+    if fmt.get("duration"):
+        try:
+            duration = int(float(fmt["duration"]))
+        except Exception:
+            duration = 0
+
+    return {
+        "video_id": source_id,
+        "title": video_path.stem,
+        "duration": duration,
+        "uploader": "Local Upload",
+        "upload_date": datetime.now().strftime("%Y%m%d"),
+        "view_count": 0,
+        "description": f"Local video file: {video_path.name}",
+        "source_type": "local",
+        "source_path": str(video_path.resolve())
+    }
+
+
+def has_audio_stream(video_path):
+    """Return True if ffprobe detects at least one audio stream."""
+    cmd = [
+        "ffprobe",
+        "-v", "error",
+        "-select_streams", "a",
+        "-show_entries", "stream=index",
+        "-of", "json",
+        str(video_path),
+    ]
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+        data = json.loads(result.stdout or "{}")
+        return len(data.get("streams", [])) > 0
+    except Exception:
+        return False
+
+
+def prepare_local_video(source_path, source_id, output_dir):
+    """Copy local video into output directory and generate metadata"""
+    print("\n📥 Preparing local video...")
+    local_path = Path(source_path).expanduser().resolve()
+    if not local_path.exists() or not local_path.is_file():
+        print(f"\n❌ Local video not found: {local_path}")
+        sys.exit(1)
+
+    suffix = local_path.suffix if local_path.suffix else ".mp4"
+    target_path = output_dir / f"original{suffix}"
+    shutil.copy2(local_path, target_path)
+
+    metadata = get_local_video_metadata(target_path, source_id)
+    metadata_path = output_dir / "metadata.json"
+    with open(metadata_path, "w") as f:
+        json.dump(metadata, f, indent=2)
+
+    print(f"   ✓ Copied: {local_path.name}")
+    print(f"   ✓ Duration: {metadata.get('duration', 0)}s")
+    return target_path, metadata
 
 
 def download_video(url, video_id, output_dir):
@@ -156,6 +247,23 @@ def transcribe_video(video_path, output_dir):
     except FileNotFoundError:
         print("   ✗ Whisper not found. Install with: pip install openai-whisper")
         sys.exit(1)
+
+    # Handle silent videos gracefully (e.g., screen recordings with no audio track)
+    if not has_audio_stream(video_path):
+        print("   ⚠️  No audio stream detected; creating placeholder transcript")
+        fallback = {
+            "text": "[No audio track detected]",
+            "segments": [
+                {
+                    "start": 0.0,
+                    "end": 0.0,
+                    "text": "[No audio track detected in this video. Use visual moments for clip selection.]",
+                }
+            ],
+        }
+        with open(transcript_json, "w") as f:
+            json.dump(fallback, f, indent=2)
+        return fallback
 
     # Try base model first, fallback to tiny if it fails
     models = ["base", "tiny"]
@@ -690,9 +798,9 @@ def generate_captions_for_clip(clip_path, whisper_json_path, start_time, end_tim
 
 def main():
     parser = argparse.ArgumentParser(
-        description="AI-Powered Video Clipper - Automatically create viral clips from YouTube videos"
+        description="AI-Powered Video Clipper - Create viral clips from YouTube URLs or local video files"
     )
-    parser.add_argument("url", help="YouTube video URL")
+    parser.add_argument("source", help="YouTube URL or local video file path")
     parser.add_argument("--skip-download", action="store_true", help="Skip download if video already exists")
     parser.add_argument("--skip-transcription", action="store_true", help="Skip transcription if it already exists")
     parser.add_argument("--add-captions", action="store_true", help="Generate animated captions using Remotion (Phase 2)")
@@ -715,9 +823,19 @@ def main():
         sys.exit(1)
 
     try:
-        # Parse URL
-        video_id = parse_youtube_url(args.url)
-        print(f"\n✓ Video ID: {video_id}")
+        source = args.source
+        source_type = "youtube" if is_youtube_url(source) else "local"
+        if source_type == "youtube":
+            video_id = parse_youtube_url(source)
+        else:
+            local_path = Path(source).expanduser().resolve()
+            if not local_path.exists():
+                print(f"\n❌ Local file not found: {local_path}")
+                sys.exit(1)
+            video_id = f"local_{slugify(local_path.stem)}_{int(local_path.stat().st_mtime)}"
+
+        print(f"\n✓ Source type: {source_type}")
+        print(f"✓ Video ID: {video_id}")
 
         # Setup directories
         downloads_dir = Path("downloads")
@@ -728,18 +846,35 @@ def main():
 
         print(f"✓ Output directory: {output_dir}")
 
-        # Download video
-        video_path = output_dir / "original.mp4"
-        if args.skip_download and video_path.exists():
-            print(f"\n✓ Using existing video: {video_path}")
-            metadata_path = output_dir / "metadata.json"
-            if metadata_path.exists():
-                with open(metadata_path, 'r') as f:
-                    metadata = json.load(f)
+        # Download or copy video
+        existing_video = next((p for p in output_dir.glob("original.*") if p.is_file()), None)
+
+        if source_type == "youtube":
+            video_path = output_dir / "original.mp4"
+            if args.skip_download and existing_video:
+                video_path = existing_video
+                print(f"\n✓ Using existing video: {video_path}")
+                metadata_path = output_dir / "metadata.json"
+                if metadata_path.exists():
+                    with open(metadata_path, 'r') as f:
+                        metadata = json.load(f)
+                else:
+                    metadata = {"video_id": video_id, "source_type": "youtube"}
             else:
-                metadata = {"video_id": video_id}
+                video_path, metadata = download_video(source, video_id, output_dir)
+                metadata["source_type"] = "youtube"
         else:
-            video_path, metadata = download_video(args.url, video_id, output_dir)
+            if args.skip_download and existing_video:
+                video_path = existing_video
+                print(f"\n✓ Using existing local video: {video_path}")
+                metadata_path = output_dir / "metadata.json"
+                if metadata_path.exists():
+                    with open(metadata_path, 'r') as f:
+                        metadata = json.load(f)
+                else:
+                    metadata = {"video_id": video_id, "source_type": "local"}
+            else:
+                video_path, metadata = prepare_local_video(source, video_id, output_dir)
 
         # Transcribe video
         transcript_json = output_dir / "original.json"

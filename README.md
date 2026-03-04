@@ -42,12 +42,16 @@ Once installed (or running directly), use natural language:
 
 > "Turn this YouTube video into Instagram Reels: [URL]"
 
+> "Create viral clips from this YouTube video with animated captions: [URL]"
+
 > "Extract the best highlights from this tutorial for TikTok"
 
 ### For Local/Uploaded Videos
 > "Create short clips from this video file: /path/to/video.mp4"
 
 > "Make Reels from my uploaded video"
+
+> "Make Reels from my uploaded video with scaling caption style"
 
 ### With Additional Options
 > "Create 5 viral clips from this video with animated captions"
@@ -121,12 +125,14 @@ Before first use, ensure these are installed:
 | ffmpeg | Video processing | `brew install ffmpeg` (macOS) / `sudo apt install ffmpeg` (Linux) |
 | yt-dlp | YouTube downloads | `pip install yt-dlp` |
 | whisper | Audio transcription | `pip install openai-whisper` |
+| remotion (optional, captions) | Animated caption rendering | `cd remotion-captions && npm install` |
 
 Verify installation:
 ```bash
 ffmpeg -version
 yt-dlp --version
 whisper --help
+cd remotion-captions && npx remotion --help
 ```
 
 ---

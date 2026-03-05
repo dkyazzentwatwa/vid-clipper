@@ -86,7 +86,11 @@ The skill package contains:
 universal-video-clipper/
 ├── SKILL.md                           # Main skill instructions
 ├── scripts/
-│   └── ai_clip_generator.py          # Main orchestrator
+│   ├── ai_clip_generator.py          # Main orchestrator
+│   └── remotion-captions/            # Remotion caption renderer project
+│       ├── package.json
+│       ├── remotion.config.ts
+│       └── src/
 ├── references/
 │   ├── clip_analysis_prompt.md       # AI prompt template
 │   └── troubleshooting.md            # Common issues & solutions
@@ -284,6 +288,7 @@ The skill includes:
 - **references/troubleshooting.md** - Common issues and solutions
 - **references/clip_analysis_prompt.md** - AI prompt template
 - **scripts/ai_clip_generator.py** - Well-documented Python code
+- **scripts/remotion-captions/** - Remotion project used by `--add-captions`
 
 All files are included in the skill package and available in context when using the skill.
 

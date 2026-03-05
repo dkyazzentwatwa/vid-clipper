@@ -120,6 +120,18 @@ brew install node
 
 ## Technical Reference
 
+### Skill Package Layout
+
+```text
+universal-video-clipper/
+├── SKILL.md
+├── assets/requirements.txt
+└── scripts/
+    ├── ai_clip_generator.py
+    ├── prompt_templates/clip_analysis_prompt.md
+    └── remotion-captions/            # Remotion caption renderer project
+```
+
 ### CLI Command
 
 ```bash

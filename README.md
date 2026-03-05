@@ -285,6 +285,7 @@ If you use an AI assistant (like Claude Code), you can import the packaged skill
 - SKILL.md with instructions for the AI
 - Reference documentation
 - Helper scripts
+- `scripts/remotion-captions/` for animated caption rendering
 
 To use it, import `universal-video-clipper.skill` into your AI assistant's skill manager.
 

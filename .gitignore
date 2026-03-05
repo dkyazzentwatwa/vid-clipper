@@ -94,7 +94,7 @@ ffmpeg2pass-*.log
 
 # Skill package (if you want to version it separately)
 # skill-package/
-# *.skill
+*.skill
 
 # Node.js / Remotion
 node_modules/
